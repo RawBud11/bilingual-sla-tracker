@@ -1,0 +1,20 @@
+{
+  "name": "bilingual-sla-tracker",
+  "version": "1.0.0",
+  "description": "Google Sheets support tracker with SLA alerts and daily digests in English and Spanish (Apps Script). Demo company Puentara is fictional.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "demo": "node scripts/demo.js",
+    "bundle": "node scripts/bundle.js",
+    "make-data": "node scripts/make-tickets.js --seed 42"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5"
+  }
+}

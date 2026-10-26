@@ -1,0 +1,165 @@
+$ npm run demo
+DRY RUN: nothing is emailed. Puentara is a fictional company and all data is synthetic.
+Clock: 2026-10-23 10:00 (team time zone)
+
+Open tickets, most urgent first
+Ticket ID  Category               Priority                  Assignee     SLA due           SLA status
+T-1061     Card lost or stolen    Urgent                    unassigned   2026-10-23 07:40  Breached
+T-1063     Account access         Urgent                    unassigned   2026-10-23 10:10  At risk
+T-1052     General question       Low                       Jordan Demo  2026-10-22 15:00  Breached, already alerted today
+T-1055     Identity verification  High                      Sam Demo     2026-10-22 16:50  Breached
+T-1057     Charge dispute         High                      Jordan Demo  2026-10-23 09:00  Breached
+T-1062     Card lost or stolen    Urgent (raised from Low)  Sam Demo     2026-10-23 09:15  Breached
+T-1059     Account access         High                      Mateo Demo   2026-10-23 10:30  At risk
+T-1060     Identity verification  High                      Mateo Demo   2026-10-23 11:00  At risk
+T-1017     Tax forms              Normal                    Jordan Demo  2026-10-16 18:00  Met, follow up or close
+T-1040     Fees                   Normal                    Mateo Demo   2026-10-20 12:00  Met, follow up or close
+T-1045     Charge dispute         High                      Lucía Demo   2026-10-20 14:30  Met, follow up or close
+T-1001     Card lost or stolen    Urgent                    Sam Demo     2026-10-12 11:10  Met
+T-1002     Fees                   Normal                    Jordan Demo  2026-10-13 09:35  Met
+T-1006     Fees                   Normal                    Mateo Demo   2026-10-14 13:00  Met
+T-1013     Card lost or stolen    Urgent                    Sam Demo     2026-10-15 16:05  Met
+T-1021     App bug                Normal                    Lucía Demo   2026-10-19 14:25  Met
+T-1039     Card lost or stolen    Urgent                    Lucía Demo   2026-10-19 15:00  Met
+T-1030     Tax forms              Normal                    Sam Demo     2026-10-19 16:00  Met
+T-1031     App bug                Normal                    Sam Demo     2026-10-19 16:00  Met
+T-1048     Charge dispute         High                      Sam Demo     2026-10-21 10:00  Met
+T-1051     App bug                Normal                    Sam Demo     2026-10-21 17:00  Met
+T-1058     General question       Normal                    unassigned   2026-10-23 14:05  OK
+
+Breached: 5   At risk: 3   Stale follow-ups: 3   Unassigned urgent: 2
+1 ticket had its priority raised to the category minimum.
+4 digests written to output/ (DRY RUN, nothing emailed)
+
+Weekly summary (sample data)
+Weekly summary, 2026-10-16 10:00 to 2026-10-23 10:00 (sample data)
+Group    Opened  First response met  First response missed  Open now  Stale follow-ups
+English  29      21                  3                      16        1
+Spanish  18      12                  2                      6         2
+Mixed    0       0                   0                      0         0
+Other    0       0                   0                      0         0
+Total    47      33                  5                      22        3
+
+Files written:
+  output/tracker_checked.csv
+  output/digest_lead_es.txt
+  output/digest_mateo_demo_es.txt
+  output/digest_sam_demo_en.txt
+  output/digest_jordan_demo_en.txt
+  output/digest_lead_en.txt
+  output/digest_es.html
+  output/weekly_summary.csv
+
+$ npm run demo -- --lang es
+SIMULACIÓN: no se envía ningún correo. Puentara es una empresa ficticia y todos los datos son sintéticos.
+Reloj: 2026-10-23 10:00 (zona horaria del equipo)
+
+Tickets pendientes, los más urgentes primero
+ID del ticket  Categoría                  Prioridad                   Asignado a   Vence el SLA      Estado del SLA
+T-1061         Tarjeta perdida o robada   Urgente                     sin asignar  2026-10-23 07:40  Vencido
+T-1063         Acceso a la cuenta         Urgente                     sin asignar  2026-10-23 10:10  En riesgo
+T-1052         Pregunta general           Baja                        Jordan Demo  2026-10-22 15:00  Vencido, ya se avisó hoy
+T-1055         Verificación de identidad  Alta                        Sam Demo     2026-10-22 16:50  Vencido
+T-1057         Disputa de cargo           Alta                        Jordan Demo  2026-10-23 09:00  Vencido
+T-1062         Tarjeta perdida o robada   Urgente (subió desde Baja)  Sam Demo     2026-10-23 09:15  Vencido
+T-1059         Acceso a la cuenta         Alta                        Mateo Demo   2026-10-23 10:30  En riesgo
+T-1060         Verificación de identidad  Alta                        Mateo Demo   2026-10-23 11:00  En riesgo
+T-1017         Formularios fiscales       Media                       Jordan Demo  2026-10-16 18:00  Cumplido, responde o cierra
+T-1040         Comisiones                 Media                       Mateo Demo   2026-10-20 12:00  Cumplido, responde o cierra
+T-1045         Disputa de cargo           Alta                        Lucía Demo   2026-10-20 14:30  Cumplido, responde o cierra
+T-1001         Tarjeta perdida o robada   Urgente                     Sam Demo     2026-10-12 11:10  Cumplido
+T-1002         Comisiones                 Media                       Jordan Demo  2026-10-13 09:35  Cumplido
+T-1006         Comisiones                 Media                       Mateo Demo   2026-10-14 13:00  Cumplido
+T-1013         Tarjeta perdida o robada   Urgente                     Sam Demo     2026-10-15 16:05  Cumplido
+T-1021         Error en la app            Media                       Lucía Demo   2026-10-19 14:25  Cumplido
+T-1039         Tarjeta perdida o robada   Urgente                     Lucía Demo   2026-10-19 15:00  Cumplido
+T-1030         Formularios fiscales       Media                       Sam Demo     2026-10-19 16:00  Cumplido
+T-1031         Error en la app            Media                       Sam Demo     2026-10-19 16:00  Cumplido
+T-1048         Disputa de cargo           Alta                        Sam Demo     2026-10-21 10:00  Cumplido
+T-1051         Error en la app            Media                       Sam Demo     2026-10-21 17:00  Cumplido
+T-1058         Pregunta general           Media                       sin asignar  2026-10-23 14:05  A tiempo
+
+Vencidos: 5   En riesgo: 3   Seguimientos atrasados: 3   Urgentes sin asignar: 2
+A 1 ticket se le subió la prioridad al mínimo de su categoría.
+4 resúmenes guardados en output/ (SIMULACIÓN, no se envió ningún correo)
+
+Resumen semanal (datos de muestra)
+Resumen semanal, del 2026-10-16 10:00 al 2026-10-23 10:00 (datos de muestra)
+Grupo          Recibidos  Primera respuesta a tiempo  Primera respuesta tarde  Pendientes ahora  Seguimientos atrasados
+Inglés         29         21                          3                        16                1
+Español        18         12                          2                        6                 2
+Mixto          0          0                           0                        0                 0
+Otro           0          0                           0                        0                 0
+Total general  47         33                          5                        22                3
+
+Archivos generados:
+  output/tracker_checked.csv
+  output/digest_lead_es.txt
+  output/digest_mateo_demo_es.txt
+  output/digest_sam_demo_en.txt
+  output/digest_jordan_demo_en.txt
+  output/digest_lead_en.txt
+  output/digest_es.html
+  output/weekly_summary.csv
+
+$ cat output/digest_lead_es.txt
+To: lucia.demo@example.com
+Subject: Soporte Puentara: 10 tickets necesitan atención (2026-10-23)
+
+Hola, Lucía Demo:
+
+Vista del equipo para hoy. Primero van los tickets urgentes sin asignar.
+
+Urgentes sin asignar: asígnalos ya
+- T-1061 | Tarjeta perdida o robada | Urgente | sin asignar | vence 2026-10-23 07:40 | C-1314
+  "Me robaron la tarjeta anoche y veo compras que no hice"
+- T-1063 | Acceso a la cuenta | Urgente | sin asignar | vence 2026-10-23 10:10 | C-1238
+  "Someone changed my email and I can't log in"
+
+Vencidos: pasaron el tiempo de primera respuesta
+- T-1055 | Verificación de identidad | Alta | Sam Demo | vence 2026-10-22 16:50 | C-1039
+  "The selfie step fails every time"
+- T-1057 | Disputa de cargo | Alta | Jordan Demo | vence 2026-10-23 09:00 | C-1305
+  "Charged twice on card [CARD NUMBER MASKED], CVV [CODE MASKED] is on the back"
+- T-1062 | Tarjeta perdida o robada | Urgente (subió desde Baja) | Sam Demo | vence 2026-10-23 09:15 | C-1263
+  "Lost my card at the airport"
+
+En riesgo: ya se usó el 75 % del tiempo de respuesta
+- T-1059 | Acceso a la cuenta | Alta | Mateo Demo | vence 2026-10-23 10:30 | C-1341
+  "No puedo entrar, mi contraseña es [PASSWORD MASKED]"
+- T-1060 | Verificación de identidad | Alta | Mateo Demo | vence 2026-10-23 11:00 | C-1653
+  "El código es [CODE MASKED] y la app dice que expiró"
+
+Esperando al cliente hace más de 2 días hábiles: responde o cierra
+- T-1017 | Formularios fiscales | Media | Jordan Demo | vence 2026-10-16 18:00 | C-1368
+  "Which tax form do I need as a freelancer?"
+- T-1040 | Comisiones | Media | Mateo Demo | vence 2026-10-20 12:00 | C-1538
+  "No entiendo la comisión de mi último retiro"
+- T-1045 | Disputa de cargo | Alta | Lucía Demo | vence 2026-10-20 14:30 | C-1349
+  "Quiero disputar un cobro de un hotel"
+
+Recordatorios
+- Tarjeta perdida o robada, acceso a la cuenta: es urgente y lo atiende una persona. Usa el canal seguro.
+- Disputa de cargo: reúne los hechos y explica los próximos pasos y los plazos. No prometas un resultado.
+- Formularios fiscales: no des asesoría fiscal. Indica los recursos oficiales.
+
+Enviado por la hoja de seguimiento de soporte de Puentara (empresa ficticia de demostración). Las horas están en la zona horaria del equipo.
+
+$ cat output/digest_sam_demo_en.txt
+To: sam.demo@example.com
+Subject: Puentara support: 2 tickets need attention (2026-10-23)
+
+Hi Sam Demo,
+
+You have 2 tickets that need attention today.
+
+Breached: past the first-response target
+- T-1055 | Identity verification | High | Sam Demo | due 2026-10-22 16:50 | C-1039
+  "The selfie step fails every time"
+- T-1062 | Card lost or stolen | Urgent (raised from Low) | Sam Demo | due 2026-10-23 09:15 | C-1263
+  "Lost my card at the airport"
+
+Reminders
+- Card lost or stolen, account access: urgent, a person handles this. Use the secure channel.
+
+Sent by the Puentara support tracker (fictional demo company). Times are in the team time zone.

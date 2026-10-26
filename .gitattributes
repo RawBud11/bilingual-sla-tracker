@@ -1,0 +1,3 @@
+# Keep generated files byte-for-byte identical on Windows, macOS and Linux,
+# so the "data is reproducible" and "dist is up to date" tests pass everywhere.
+* text=auto eol=lf
