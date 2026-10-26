@@ -4,7 +4,7 @@ A Google Sheets support tracker that shows which tickets are about to miss their
 
 In one line: for small support teams that run their tickets from a spreadsheet and keep missing follow-ups.
 
-> **Demo scenario.** Puentara is a fictional money app for freelancers and small businesses in the US and Latin America. All tickets, customers and agents are synthetic. No AI is used in this project: every rule is plain JavaScript you can read.
+> **Demo scenario.** Puentara is a fictional money app for freelancers and small businesses in the US and Latin America. All tickets, customers and agents are synthetic. The tracker itself uses no AI: every rule is plain JavaScript you can read.
 
 ## Why I built this
 
@@ -35,7 +35,7 @@ A small team tracks support in a Google Sheet. It works until it gets busy. Nobo
 
 ## 60-second demo
 
-You need **Node.js 22.12 or newer** (only needed to run the tests; the Apps Script file doesn't need Node). No API key and no Google account needed.
+You need **Node.js 22.12 or newer** (only needed for the tests and the local demo; the Apps Script file doesn't need Node). No API key and no Google account needed.
 
 The commands are the same in PowerShell and bash:
 
@@ -47,8 +47,6 @@ npm test
 npm run demo
 npm run demo -- --lang es
 ```
-
-(The clone only works once the repo is public.)
 
 On the Windows 11 build machine, a clean `npm install`, `npm test` and `npm run demo` took under 10 seconds in total, with npm's download cache already filled (2026-10-24). A first install on a new machine downloads about 50 small packages and can take longer.
 
@@ -303,7 +301,7 @@ Tickets tab + Agents tab
 These come from real support work:
 
 - **Never repeat a card number, CVV, code or password.** Subjects are masked before they reach a digest or the summary. Tests check this in English and Spanish.
-- **Lost cards, fraud and account access are urgent and go to a person.** The priority floor makes a stolen card Urgent whatever was typed, and an unassigned urgent ticket goes to the lead on every run until someone owns it.
+- **Lost cards and account access go to a person.** The priority floor makes a lost or stolen card Urgent and account access at least High, whatever was typed, and an unassigned urgent ticket goes to the lead on every run until someone owns it.
 - **Disputes: no promised outcome.** The digest reminder says to collect the facts and explain next steps and timeline.
 - **No tax advice.** The tax reminder says to point to official resources.
 - **Nothing goes to customers.** Digests go only to people on the Agents tab. No value from a ticket row is ever used as an email address.
@@ -328,7 +326,7 @@ This is a demo project. It does not claim any compliance certification.
 
 ## Not verified
 
-- **Parts of the Google Sheet layer:** the daily trigger (**Install daily trigger**), a sheet with Spanish headers and tabs, and the dropdowns (they were created but not checked one by one). Everything else in the Apps Script layer ran once in a real Sheet (see [Real Sheet test](#real-sheet-test-2026-10-24)). It has no automated tests.
+- **Parts of the Google Sheet layer:** the daily trigger (**Install daily trigger**), a sheet with Spanish headers and tabs, and the dropdowns (they were created but not checked one by one). Everything else in the Apps Script layer ran once in a real Sheet (see [Real Sheet test](#real-sheet-test-2026-10-24)). The Apps Script layer has no automated tests.
 - **macOS and Linux.** Everything above was run on Windows 11.
 
 ## Ideas for next steps
