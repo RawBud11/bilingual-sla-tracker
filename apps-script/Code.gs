@@ -2,8 +2,9 @@
 // Apps Script layer: the only part that touches Google Sheets, Gmail and
 // triggers. All the rules (SLA math, priority floors, digests, summary) are
 // the plain functions from src/ above, tested locally with `npm test`.
-// This layer is kept thin on purpose. It has no automated tests; it was run
-// once by hand in a real Google Sheet (see "Real Sheet test" in the README).
+// This layer is kept thin on purpose. tests/apps-script.test.js runs it
+// against a fake of Google's services; it was also run once by hand in a real
+// Google Sheet (see "Real Sheet test" in the README).
 // ---------------------------------------------------------------------------
 
 // DRY_RUN = true: digests are written to the "Digest preview" tab and nothing
@@ -39,8 +40,12 @@ function setupTracker() {
     tickets.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight("bold");
     tickets.setFrozenRows(1);
   }
-  var map = mapColumns(tickets.getRange(1, 1, 1, tickets.getLastColumn()).getValues()[0],
-    TICKET_COLUMNS, EXTRA_COLUMN_ALIASES, REQUIRED_TICKET_COLUMNS, lang);
+  // An imported sheet may lack the tracker's own columns: add them now, so the
+  // SLA colors and dropdowns below have a column to go on.
+  var headerRow = tickets.getRange(1, 1, 1, tickets.getLastColumn()).getValues()[0];
+  var cols = ensureColumns(headerRow, TRACKER_COLUMNS_, lang);
+  writeHeader_(tickets, headerRow, cols.header);
+  var map = mapColumns(cols.header, TICKET_COLUMNS, EXTRA_COLUMN_ALIASES, REQUIRED_TICKET_COLUMNS, lang);
   addDropdown_(tickets, map.category, labelsFor_("category", CATEGORIES, lang));
   addDropdown_(tickets, map.priority, labelsFor_("priority", PRIORITIES, lang));
   addDropdown_(tickets, map.status, labelsFor_("status", TICKET_STATUSES, lang));
@@ -58,6 +63,18 @@ function setupTracker() {
   if (!findTab_("preview")) ss.insertSheet(t(lang, "tab.preview"));
   if (!findTab_("summary")) ss.insertSheet(t(lang, "tab.summary"));
   notify_(t(lang, "done.setup", { tab: agents.getName() }));
+}
+
+// The columns the tracker writes (see columnUpdates in src/tracker.js).
+var TRACKER_COLUMNS_ = ["priority", "language", "sla_due", "sla_status", "last_alerted"];
+
+// Write a longer header row (columns added at the end), inserting sheet
+// columns first if the tab is too narrow. Does nothing if nothing was added.
+function writeHeader_(sheet, oldHeader, newHeader) {
+  if (newHeader.length <= oldHeader.length) return;
+  var missing = newHeader.length - sheet.getMaxColumns();
+  if (missing > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), missing);
+  sheet.getRange(1, 1, 1, newHeader.length).setValues([newHeader]);
 }
 
 function labelsFor_(kind, ids, lang) {
@@ -116,7 +133,19 @@ function checkSlas() {
 
 // Checks SLAs, then builds the digests. DRY_RUN: preview tab only.
 // Recipients come only from the Agents tab (see buildDigests in src/digest.js).
+// A script lock stops a menu click and the daily trigger from both sending
+// at the same moment (which would email everyone twice).
 function sendDigests() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30 * 1000)) throw new Error(t(currentLanguage_(), "error.busy"));
+  try {
+    sendDigestsLocked_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sendDigestsLocked_() {
   var state = checkSlas();
   if (!state.agents.length) throw new Error(t(state.lang, "error.no_agents"));
   // No lead on the Agents tab: unassigned tickets would reach nobody. Stop
@@ -140,11 +169,25 @@ function sendDigests() {
   }
   // Daily email limits apply (MailApp quotas). See Google's quota page:
   // https://developers.google.com/apps-script/guides/services/quotas
+  // Each digest is sent on its own: if one fails (quota reached, bad address),
+  // the others still go out, and only the ones that went out are stamped.
+  var sent = [];
+  var errors = [];
   digests.forEach(function (d) {
-    MailApp.sendEmail({ to: d.to, subject: d.subject, body: d.text, htmlBody: d.html });
+    try {
+      MailApp.sendEmail({ to: d.to, subject: d.subject, body: d.text, htmlBody: d.html });
+      sent.push(d);
+    } catch (e) {
+      errors.push(d.to + ": " + (e && e.message ? e.message : e));
+    }
   });
   // Stamp Last alerted only on tickets in the digests just sent: no same-day repeats.
-  writeColumns_(state, alertedRows(digests));
+  if (sent.length) writeColumns_(state, alertedRows(sent));
+  if (errors.length) {
+    throw new Error(t(state.lang, "error.send_failed", {
+      sent: sent.length, total: digests.length, failed: errors.length, reason: errors.join("; "),
+    }));
+  }
   notify_(tCount(state.lang, "done.sent", digests.length));
 }
 
@@ -157,7 +200,13 @@ function installDailyTrigger() {
   });
   ScriptApp.newTrigger("sendDigests").timeBased().everyDays(1).atHour(7).nearMinute(30)
     .inTimezone(teamTimeZone_()).create();
-  notify_(t(currentLanguage_(), "done.trigger"));
+  var lang = currentLanguage_();
+  var message = t(lang, "done.trigger");
+  if (DRY_RUN) {
+    var preview = findTab_("preview");
+    message += " " + t(lang, "done.trigger_dry_run", { tab: preview ? preview.getName() : t(lang, "tab.preview") });
+  }
+  notify_(message);
 }
 
 // --- Sheet helpers ---------------------------------------------------------
@@ -213,11 +262,7 @@ function writeColumns_(state, rowsToStamp) {
   var updates = columnUpdates(state.tickets, state.table, state.now, state.lang, rowsToStamp);
   if (!rowsToStamp.length) delete updates.last_alerted;
   var cols = ensureColumns(state.table[0], Object.keys(updates), state.lang);
-  if (cols.header.length > state.table[0].length) {
-    var missing = cols.header.length - state.sheet.getMaxColumns();
-    if (missing > 0) state.sheet.insertColumnsAfter(state.sheet.getMaxColumns(), missing);
-    state.sheet.getRange(1, 1, 1, cols.header.length).setValues([cols.header]);
-  }
+  writeHeader_(state.sheet, state.table[0], cols.header);
   Object.keys(updates).forEach(function (key) {
     var values = updates[key].map(function (v) { return [v]; });
     state.sheet.getRange(2, cols.map[key] + 1, values.length, 1).setValues(values);

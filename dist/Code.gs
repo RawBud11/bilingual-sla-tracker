@@ -75,6 +75,19 @@ var CATEGORY_PRIORITY_FLOOR = {
   transfer_failed_pending: "high",
 };
 
+// Safety net for tickets whose Category is empty or not recognized: if the
+// subject clearly says "stolen card" or "can't log in", the category floor
+// still applies, so "Me robaron la tarjeta" with no category is Urgent, not
+// Normal. Only categories with a priority floor are guessed. Patterns run on
+// folded text (lowercase, no accents), checked in this order; every pattern
+// listed for a category must match.
+var CATEGORY_KEYWORDS = [
+  ["card_lost_stolen", [/\b(card|tarjeta)s?\b/,
+    /\b(lost|lose|stolen|stole|block|freeze|perdi|perdida|perdio|extravie|extraviada|robaron|robada|robo|bloquear|bloquearla|congelar)\b/]],
+  ["account_access", [/\b(can'?t|cannot|unable to) (log ?in|sign ?in|access|get into)\b|\blocked out\b|\bhacked\b|\bno puedo (entrar|iniciar sesion|acceder)\b|\b(hackearon|hackeada|hackeado)\b/]],
+  ["charge_dispute", [/\b(fraud|fraudulent|unauthori[sz]ed|fraude|no reconozco|don'?t recognize|didn'?t make|no hice)\b/]],
+];
+
 var TICKET_STATUSES = ["new", "open", "waiting", "resolved"];
 var LANGUAGES = ["en", "es", "mixed", "other"];
 var CHANNELS = ["email", "chat", "phone"];
@@ -206,7 +219,8 @@ function ticketCells(tk, lang) {
   }
   return {
     id: tk.id,
-    category: tk.category ? t(lang, "category." + tk.category) : maskSensitive(tk.categoryText).text,
+    category: !tk.category ? maskSensitive(tk.categoryText).text
+      : t(lang, "category." + tk.category) + (tk.categoryGuessed ? " (" + t(lang, "digest.guessed") + ")" : ""),
     priority: priority,
     owner: tk.owner ? tk.owner.name : t(lang, "digest.unassigned"),
     due: t(lang, "digest.due", { due: tk.slaDue }),
@@ -247,13 +261,16 @@ function buildDigest(kind, recipient, tickets, now, lang) {
 }
 
 // Every digest for today: each lead gets the team view, each agent their own.
+// Lead digests come first, so if the daily email quota runs out partway, the
+// unassigned urgent tickets have already gone out.
 function buildDigests(tickets, agents, now) {
-  var digests = [];
+  var leads = [], others = [];
   agents.forEach(function (agent) {
-    var digest = buildDigest(agent.role === "lead" ? "lead" : "agent", agent, tickets, now);
-    if (digest) digests.push(digest);
+    var kind = agent.role === "lead" ? "lead" : "agent";
+    var digest = buildDigest(kind, agent, tickets, now);
+    if (digest) (kind === "lead" ? leads : others).push(digest);
   });
-  return digests;
+  return leads.concat(others);
 }
 
 function digestText(d, lang) {
@@ -655,6 +672,7 @@ var STRINGS = {
     "digest.due": "due {due}",
     "digest.unassigned": "unassigned",
     "digest.raised": "raised from {from}",
+    "digest.guessed": "guessed from subject",
     "digest.reminders": "Reminders",
     "digest.footer": "Sent by the Puentara support tracker (fictional demo company). Times are in the team time zone.",
 
@@ -696,6 +714,9 @@ var STRINGS = {
     "done.sent_other": "{count} digests emailed.",
     "done.nothing": "Nothing to report today. No digests.",
     "done.trigger": "Daily trigger installed: digests run every day around 07:30 (team time zone).",
+    "done.trigger_dry_run": "DRY_RUN is still on, so the daily run only updates the \"{tab}\" tab. Set DRY_RUN = false to email the digests.",
+    "error.busy": "Another run is sending digests right now. Try again in a minute.",
+    "error.send_failed": "{sent} of {total} digest(s) emailed; {failed} failed: {reason}. Tickets in the digests that went out were stamped and won't repeat today; run Send digests again later for the rest.",
     "done.setup": "Tracker set up. Add your agents on the \"{tab}\" tab.",
   },
 
@@ -784,6 +805,7 @@ var STRINGS = {
     "digest.due": "vence {due}",
     "digest.unassigned": "sin asignar",
     "digest.raised": "subió desde {from}",
+    "digest.guessed": "según el asunto",
     "digest.reminders": "Recordatorios",
     "digest.footer": "Enviado por la hoja de seguimiento de soporte de Puentara (empresa ficticia de demostración). Las horas están en la zona horaria del equipo.",
 
@@ -825,6 +847,9 @@ var STRINGS = {
     "done.sent_other": "Se enviaron {count} resúmenes por correo.",
     "done.nothing": "Hoy no hay nada que reportar. No se generaron resúmenes.",
     "done.trigger": "Envío diario activado: los resúmenes salen todos los días hacia las 07:30 (zona horaria del equipo).",
+    "done.trigger_dry_run": "DRY_RUN sigue activado, así que el envío diario solo actualiza la pestaña \"{tab}\". Pon DRY_RUN = false para enviar los resúmenes por correo.",
+    "error.busy": "Otra ejecución está enviando los resúmenes en este momento. Inténtalo de nuevo en un minuto.",
+    "error.send_failed": "Se enviaron {sent} de {total} resumen(es); fallaron {failed}: {reason}. Los tickets de los resúmenes enviados quedaron marcados y no se repiten hoy; vuelve a usar Enviar resúmenes más tarde para el resto.",
     "done.setup": "Hoja lista. Agrega a tu equipo en la pestaña \"{tab}\".",
   },
 };
@@ -992,14 +1017,18 @@ function cell(row, map, key) {
 }
 
 // Agents tab -> [{ name, email, language, role }]. Rows without a valid email
-// are skipped: a digest needs somewhere to go.
+// are skipped: a digest needs somewhere to go. A repeated email keeps only its
+// first row, so nobody gets the same digest twice.
 function readAgents(table, lang) {
   if (!table.length) return [];
   var map = mapColumns(table[0], AGENT_COLUMNS, EXTRA_AGENT_ALIASES, ["name", "email"], lang);
   var agents = [];
+  var seen = {};
   table.slice(1).forEach(function (row) {
     var email = cell(row, map, "email");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    if (seen[email.toLowerCase()]) return;
+    seen[email.toLowerCase()] = true;
     agents.push({
       name: cell(row, map, "name"),
       email: email,
@@ -1037,6 +1066,17 @@ function effectivePriority(category, priorityCell) {
   return { priority: priority, raisedFrom: "" };
 }
 
+// Category guessed from the subject when the Category cell is empty or not
+// recognized (see CATEGORY_KEYWORDS in config.js), or "".
+function guessCategory(subject) {
+  var folded = foldText(subject);
+  for (var i = 0; i < CATEGORY_KEYWORDS.length; i++) {
+    var all = CATEGORY_KEYWORDS[i][1].every(function (re) { return re.test(folded); });
+    if (all) return CATEGORY_KEYWORDS[i][0];
+  }
+  return "";
+}
+
 // "Waiting on customer" with no update for more than 2 business days.
 function isStaleFollowUp(status, lastUpdateAt, now) {
   if (status !== "waiting") return false;
@@ -1048,13 +1088,15 @@ function isStaleFollowUp(status, lastUpdateAt, now) {
 
 // Check one data row. `now` is "YYYY-MM-DD HH:mm" in the team time zone.
 function checkTicket(row, map, agents, now) {
-  var category = idFromLabel("category", cell(row, map, "category"), CATEGORIES);
+  var subject = cell(row, map, "subject");
+  var typedCategory = idFromLabel("category", cell(row, map, "category"), CATEGORIES);
+  // No usable category: guess one from the subject so a stolen card is still Urgent.
+  var category = typedCategory || guessCategory(subject);
   var status = idFromLabel("status", cell(row, map, "status"), TICKET_STATUSES) || "open";
   var p = effectivePriority(category, cell(row, map, "priority"));
   var createdAt = cell(row, map, "created_at");
   var firstResponseAt = cell(row, map, "first_response_at");
   var lastUpdateAt = cell(row, map, "last_update_at");
-  var subject = cell(row, map, "subject");
   var typedLanguage = idFromLabel("language", cell(row, map, "language"), LANGUAGES);
   var masked = maskSensitive(subject);
 
@@ -1082,6 +1124,7 @@ function checkTicket(row, map, agents, now) {
     subject: masked.text, // only the masked subject is kept
     maskedCount: masked.count,
     category: category,
+    categoryGuessed: !typedCategory && !!category,
     categoryText: cell(row, map, "category"),
     priority: p.priority,
     raisedFrom: p.raisedFrom,
@@ -1118,7 +1161,7 @@ function checkTickets(table, agents, now, lang) {
 }
 
 // Order for people: unassigned urgent, breached, at risk, stale, the rest;
-// then by due time.
+// then by due time (no due time, from unreadable dates, goes last).
 function attentionRank(ticket) {
   if (ticket.unassignedUrgent) return 0;
   if (ticket.sla === "breached") return 1;
@@ -1128,8 +1171,9 @@ function attentionRank(ticket) {
 }
 
 function sortForAttention(tickets) {
+  function due(tk) { return tk.slaDue || "9999"; }
   return tickets.slice().sort(function (a, b) {
-    return attentionRank(a) - attentionRank(b) || (a.slaDue < b.slaDue ? -1 : a.slaDue > b.slaDue ? 1 : 0);
+    return attentionRank(a) - attentionRank(b) || (due(a) < due(b) ? -1 : due(a) > due(b) ? 1 : 0);
   });
 }
 
@@ -1176,8 +1220,9 @@ function applyColumnUpdates(table, updates, lang) {
 // Apps Script layer: the only part that touches Google Sheets, Gmail and
 // triggers. All the rules (SLA math, priority floors, digests, summary) are
 // the plain functions from src/ above, tested locally with `npm test`.
-// This layer is kept thin on purpose. It has no automated tests; it was run
-// once by hand in a real Google Sheet (see "Real Sheet test" in the README).
+// This layer is kept thin on purpose. tests/apps-script.test.js runs it
+// against a fake of Google's services; it was also run once by hand in a real
+// Google Sheet (see "Real Sheet test" in the README).
 // ---------------------------------------------------------------------------
 
 // DRY_RUN = true: digests are written to the "Digest preview" tab and nothing
@@ -1213,8 +1258,12 @@ function setupTracker() {
     tickets.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight("bold");
     tickets.setFrozenRows(1);
   }
-  var map = mapColumns(tickets.getRange(1, 1, 1, tickets.getLastColumn()).getValues()[0],
-    TICKET_COLUMNS, EXTRA_COLUMN_ALIASES, REQUIRED_TICKET_COLUMNS, lang);
+  // An imported sheet may lack the tracker's own columns: add them now, so the
+  // SLA colors and dropdowns below have a column to go on.
+  var headerRow = tickets.getRange(1, 1, 1, tickets.getLastColumn()).getValues()[0];
+  var cols = ensureColumns(headerRow, TRACKER_COLUMNS_, lang);
+  writeHeader_(tickets, headerRow, cols.header);
+  var map = mapColumns(cols.header, TICKET_COLUMNS, EXTRA_COLUMN_ALIASES, REQUIRED_TICKET_COLUMNS, lang);
   addDropdown_(tickets, map.category, labelsFor_("category", CATEGORIES, lang));
   addDropdown_(tickets, map.priority, labelsFor_("priority", PRIORITIES, lang));
   addDropdown_(tickets, map.status, labelsFor_("status", TICKET_STATUSES, lang));
@@ -1232,6 +1281,18 @@ function setupTracker() {
   if (!findTab_("preview")) ss.insertSheet(t(lang, "tab.preview"));
   if (!findTab_("summary")) ss.insertSheet(t(lang, "tab.summary"));
   notify_(t(lang, "done.setup", { tab: agents.getName() }));
+}
+
+// The columns the tracker writes (see columnUpdates in src/tracker.js).
+var TRACKER_COLUMNS_ = ["priority", "language", "sla_due", "sla_status", "last_alerted"];
+
+// Write a longer header row (columns added at the end), inserting sheet
+// columns first if the tab is too narrow. Does nothing if nothing was added.
+function writeHeader_(sheet, oldHeader, newHeader) {
+  if (newHeader.length <= oldHeader.length) return;
+  var missing = newHeader.length - sheet.getMaxColumns();
+  if (missing > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), missing);
+  sheet.getRange(1, 1, 1, newHeader.length).setValues([newHeader]);
 }
 
 function labelsFor_(kind, ids, lang) {
@@ -1290,7 +1351,19 @@ function checkSlas() {
 
 // Checks SLAs, then builds the digests. DRY_RUN: preview tab only.
 // Recipients come only from the Agents tab (see buildDigests in src/digest.js).
+// A script lock stops a menu click and the daily trigger from both sending
+// at the same moment (which would email everyone twice).
 function sendDigests() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30 * 1000)) throw new Error(t(currentLanguage_(), "error.busy"));
+  try {
+    sendDigestsLocked_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sendDigestsLocked_() {
   var state = checkSlas();
   if (!state.agents.length) throw new Error(t(state.lang, "error.no_agents"));
   // No lead on the Agents tab: unassigned tickets would reach nobody. Stop
@@ -1314,11 +1387,25 @@ function sendDigests() {
   }
   // Daily email limits apply (MailApp quotas). See Google's quota page:
   // https://developers.google.com/apps-script/guides/services/quotas
+  // Each digest is sent on its own: if one fails (quota reached, bad address),
+  // the others still go out, and only the ones that went out are stamped.
+  var sent = [];
+  var errors = [];
   digests.forEach(function (d) {
-    MailApp.sendEmail({ to: d.to, subject: d.subject, body: d.text, htmlBody: d.html });
+    try {
+      MailApp.sendEmail({ to: d.to, subject: d.subject, body: d.text, htmlBody: d.html });
+      sent.push(d);
+    } catch (e) {
+      errors.push(d.to + ": " + (e && e.message ? e.message : e));
+    }
   });
   // Stamp Last alerted only on tickets in the digests just sent: no same-day repeats.
-  writeColumns_(state, alertedRows(digests));
+  if (sent.length) writeColumns_(state, alertedRows(sent));
+  if (errors.length) {
+    throw new Error(t(state.lang, "error.send_failed", {
+      sent: sent.length, total: digests.length, failed: errors.length, reason: errors.join("; "),
+    }));
+  }
   notify_(tCount(state.lang, "done.sent", digests.length));
 }
 
@@ -1331,7 +1418,13 @@ function installDailyTrigger() {
   });
   ScriptApp.newTrigger("sendDigests").timeBased().everyDays(1).atHour(7).nearMinute(30)
     .inTimezone(teamTimeZone_()).create();
-  notify_(t(currentLanguage_(), "done.trigger"));
+  var lang = currentLanguage_();
+  var message = t(lang, "done.trigger");
+  if (DRY_RUN) {
+    var preview = findTab_("preview");
+    message += " " + t(lang, "done.trigger_dry_run", { tab: preview ? preview.getName() : t(lang, "tab.preview") });
+  }
+  notify_(message);
 }
 
 // --- Sheet helpers ---------------------------------------------------------
@@ -1387,11 +1480,7 @@ function writeColumns_(state, rowsToStamp) {
   var updates = columnUpdates(state.tickets, state.table, state.now, state.lang, rowsToStamp);
   if (!rowsToStamp.length) delete updates.last_alerted;
   var cols = ensureColumns(state.table[0], Object.keys(updates), state.lang);
-  if (cols.header.length > state.table[0].length) {
-    var missing = cols.header.length - state.sheet.getMaxColumns();
-    if (missing > 0) state.sheet.insertColumnsAfter(state.sheet.getMaxColumns(), missing);
-    state.sheet.getRange(1, 1, 1, cols.header.length).setValues([cols.header]);
-  }
+  writeHeader_(state.sheet, state.table[0], cols.header);
   Object.keys(updates).forEach(function (key) {
     var values = updates[key].map(function (v) { return [v]; });
     state.sheet.getRange(2, cols.map[key] + 1, values.length, 1).setValues(values);

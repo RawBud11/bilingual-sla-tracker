@@ -90,6 +90,7 @@ var STRINGS = {
     "digest.due": "due {due}",
     "digest.unassigned": "unassigned",
     "digest.raised": "raised from {from}",
+    "digest.guessed": "guessed from subject",
     "digest.reminders": "Reminders",
     "digest.footer": "Sent by the Puentara support tracker (fictional demo company). Times are in the team time zone.",
 
@@ -131,6 +132,9 @@ var STRINGS = {
     "done.sent_other": "{count} digests emailed.",
     "done.nothing": "Nothing to report today. No digests.",
     "done.trigger": "Daily trigger installed: digests run every day around 07:30 (team time zone).",
+    "done.trigger_dry_run": "DRY_RUN is still on, so the daily run only updates the \"{tab}\" tab. Set DRY_RUN = false to email the digests.",
+    "error.busy": "Another run is sending digests right now. Try again in a minute.",
+    "error.send_failed": "{sent} of {total} digest(s) emailed; {failed} failed: {reason}. Tickets in the digests that went out were stamped and won't repeat today; run Send digests again later for the rest.",
     "done.setup": "Tracker set up. Add your agents on the \"{tab}\" tab.",
   },
 
@@ -219,6 +223,7 @@ var STRINGS = {
     "digest.due": "vence {due}",
     "digest.unassigned": "sin asignar",
     "digest.raised": "subió desde {from}",
+    "digest.guessed": "según el asunto",
     "digest.reminders": "Recordatorios",
     "digest.footer": "Enviado por la hoja de seguimiento de soporte de Puentara (empresa ficticia de demostración). Las horas están en la zona horaria del equipo.",
 
@@ -260,6 +265,9 @@ var STRINGS = {
     "done.sent_other": "Se enviaron {count} resúmenes por correo.",
     "done.nothing": "Hoy no hay nada que reportar. No se generaron resúmenes.",
     "done.trigger": "Envío diario activado: los resúmenes salen todos los días hacia las 07:30 (zona horaria del equipo).",
+    "done.trigger_dry_run": "DRY_RUN sigue activado, así que el envío diario solo actualiza la pestaña \"{tab}\". Pon DRY_RUN = false para enviar los resúmenes por correo.",
+    "error.busy": "Otra ejecución está enviando los resúmenes en este momento. Inténtalo de nuevo en un minuto.",
+    "error.send_failed": "Se enviaron {sent} de {total} resumen(es); fallaron {failed}: {reason}. Los tickets de los resúmenes enviados quedaron marcados y no se repiten hoy; vuelve a usar Enviar resúmenes más tarde para el resto.",
     "done.setup": "Hoja lista. Agrega a tu equipo en la pestaña \"{tab}\".",
   },
 };

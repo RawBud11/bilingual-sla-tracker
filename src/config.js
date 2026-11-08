@@ -70,6 +70,19 @@ var CATEGORY_PRIORITY_FLOOR = {
   transfer_failed_pending: "high",
 };
 
+// Safety net for tickets whose Category is empty or not recognized: if the
+// subject clearly says "stolen card" or "can't log in", the category floor
+// still applies, so "Me robaron la tarjeta" with no category is Urgent, not
+// Normal. Only categories with a priority floor are guessed. Patterns run on
+// folded text (lowercase, no accents), checked in this order; every pattern
+// listed for a category must match.
+var CATEGORY_KEYWORDS = [
+  ["card_lost_stolen", [/\b(card|tarjeta)s?\b/,
+    /\b(lost|lose|stolen|stole|block|freeze|perdi|perdida|perdio|extravie|extraviada|robaron|robada|robo|bloquear|bloquearla|congelar)\b/]],
+  ["account_access", [/\b(can'?t|cannot|unable to) (log ?in|sign ?in|access|get into)\b|\blocked out\b|\bhacked\b|\bno puedo (entrar|iniciar sesion|acceder)\b|\b(hackearon|hackeada|hackeado)\b/]],
+  ["charge_dispute", [/\b(fraud|fraudulent|unauthori[sz]ed|fraude|no reconozco|don'?t recognize|didn'?t make|no hice)\b/]],
+];
+
 var TICKET_STATUSES = ["new", "open", "waiting", "resolved"];
 var LANGUAGES = ["en", "es", "mixed", "other"];
 var CHANNELS = ["email", "chat", "phone"];
