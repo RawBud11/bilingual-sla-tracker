@@ -23,9 +23,11 @@ A small team tracks support in a Google Sheet. It works until it gets busy. Nobo
 - **First-response SLA status for every ticket:** OK, At risk (75% of the time used), Breached, and, once answered, Met or Missed.
 - **Targets by priority:** Urgent 1 hour, around the clock (nights and weekends count). High 4, Normal 8 and Low 16 business hours, Monday to Friday 08:00 to 18:00. A ticket created Friday at 17:30 with 4 business hours is due Monday at 11:30.
 - **Category priority floors.** Anyone can raise a priority, nobody can set it below the floor. A lost or stolen card is always Urgent; disputes, account access, identity checks and failed transfers are at least High. An empty Priority cell gets the category default.
+- **Keyword safety net for blank categories.** If Category is empty or not recognized and the subject clearly says "Me robaron la tarjeta", "can't log in" or "fraude", the matching floor still applies, and the digest shows the category as "guessed from subject". The Category cell itself is never changed.
 - **Stale follow-ups:** a ticket "Waiting on customer" for more than 2 business days is flagged "follow up or close".
-- **Daily digests in each person's language.** Each agent gets their own tickets. Each lead gets the team view, with unassigned urgent tickets first. Plain text and HTML. Recipients come only from the Agents tab, never from a ticket row.
+- **Daily digests in each person's language.** Each agent gets their own tickets. Each lead gets the team view, with unassigned urgent tickets first. Plain text and HTML. Recipients come only from the Agents tab, never from a ticket row, and an email listed twice gets one digest.
 - **Masking.** Card numbers, CVVs, one-time codes and labeled passwords that customers typed into a subject are hidden before anything goes into a digest.
+- **One run at a time.** A script lock stops a menu click and the daily trigger from emailing everyone twice.
 - **No same-day repeats.** A ticket already in today's digest is skipped on the next run, except unassigned urgent tickets: those are alerted on every run until someone owns them.
 - **Fixed reminders** in the digest for sensitive categories: lost cards and account access go to a person, disputes get no promised outcome, tax questions get no tax advice.
 - **Weekly summary tab:** tickets opened, first responses met and missed, open now and stale follow-ups, by category and by language.
@@ -294,7 +296,7 @@ Tickets tab + Agents tab
 | `dist/Code.gs` | The one file you paste into Apps Script (built by `npm run bundle`) |
 | `scripts/demo.js` | The local demo on CSV files |
 | `scripts/make-tickets.js` | Makes the seeded sample data |
-| `tests/` | 149 vitest tests, including the guardrail tests in both languages |
+| `tests/` | 177 vitest tests, including the guardrail tests in both languages and the Apps Script layer run against a fake Sheet and Gmail (`tests/fake-google.js`) |
 
 ## Safety and support rules
 
@@ -315,8 +317,8 @@ This is a demo project. It does not claim any compliance certification.
 - **No holidays.** Business days are Monday to Friday 08:00 to 18:00. A public holiday counts as a business day.
 - **One time zone.** Everything uses the spreadsheet's time zone. There are no per-agent time zones.
 - **First-response SLA only.** No resolution-time SLA, and the clock doesn't pause while waiting on the customer.
-- **No keyword safety net for blank categories.** A ticket with no category that says "Me robaron la tarjeta" stays Normal (8 business hours). The priority floor only works when the Category is filled in.
-- **If emailing fails partway** (for example, a daily quota is reached), "Last alerted" isn't stamped, so the digests that did go out are sent again on the next run.
+- **The keyword safety net is a short list.** It catches clear phrases for lost or stolen cards, account access and fraud (see `CATEGORY_KEYWORDS` in `src/config.js`). Other blank-category tickets get the Normal default.
+- **If emailing fails partway** (for example, a daily quota is reached), the other digests still go out, lead digests first, and only the tickets in digests that went out are stamped. "Send digests" then stops with an error naming the failed addresses; run it again later for the rest.
 - **With no lead on the Agents tab, all digests stop,** including agents' own breached tickets, until someone is set as Lead.
 - **A name typo in Assignee** makes the ticket count as unassigned (a name not on the Agents tab can't get a digest).
 - **Masking is pattern-based.** It hides card numbers, CVVs, codes and labeled passwords. It doesn't hide names, account numbers or passwords typed with no label, and it can over-mask harmless numbers ("error code 5003"). Customer IDs appear in digests as they are.
@@ -326,15 +328,13 @@ This is a demo project. It does not claim any compliance certification.
 
 ## Not verified
 
-- **Parts of the Google Sheet layer:** the daily trigger (**Install daily trigger**), a sheet with Spanish headers and tabs, and the dropdowns (they were created but not checked one by one). Everything else in the Apps Script layer ran once in a real Sheet (see [Real Sheet test](#real-sheet-test-2026-10-24)). The Apps Script layer has no automated tests.
-- **macOS and Linux.** Everything above was run on Windows 11.
+- **Parts of the Google Sheet layer:** the daily trigger (**Install daily trigger**), a sheet with Spanish headers and tabs, and the dropdowns (they were created but not checked one by one). Everything else in the Apps Script layer ran once in a real Sheet (see [Real Sheet test](#real-sheet-test-2026-10-24)). The Apps Script layer now has automated tests, but against an in-memory fake of Google's services, not Google itself. The script lock and the per-digest error handling added after the real-sheet run are tested only against that fake.
+- **macOS.** Tests and the demo were run on Windows 11 and on Linux (Node.js 22.23, 2026-11-08, same demo output byte for byte). The GitHub Actions workflow also runs the tests on macOS.
 
 ## Ideas for next steps
 
 - A holiday calendar tab.
 - Resolution-time SLA, and pausing the clock while waiting on the customer.
-- A keyword check that flags blank-category tickets like "stolen card" or "fraude" to the lead.
-- Stamp "Last alerted" per digest, so a partial email failure doesn't resend.
 - A "snooze until" column for follow-ups the customer asked to delay.
 - A clasp setup as an alternative to pasting `dist/Code.gs`.
 

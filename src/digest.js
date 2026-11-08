@@ -86,7 +86,8 @@ function ticketCells(tk, lang) {
   }
   return {
     id: tk.id,
-    category: tk.category ? t(lang, "category." + tk.category) : maskSensitive(tk.categoryText).text,
+    category: !tk.category ? maskSensitive(tk.categoryText).text
+      : t(lang, "category." + tk.category) + (tk.categoryGuessed ? " (" + t(lang, "digest.guessed") + ")" : ""),
     priority: priority,
     owner: tk.owner ? tk.owner.name : t(lang, "digest.unassigned"),
     due: t(lang, "digest.due", { due: tk.slaDue }),
@@ -127,13 +128,16 @@ function buildDigest(kind, recipient, tickets, now, lang) {
 }
 
 // Every digest for today: each lead gets the team view, each agent their own.
+// Lead digests come first, so if the daily email quota runs out partway, the
+// unassigned urgent tickets have already gone out.
 function buildDigests(tickets, agents, now) {
-  var digests = [];
+  var leads = [], others = [];
   agents.forEach(function (agent) {
-    var digest = buildDigest(agent.role === "lead" ? "lead" : "agent", agent, tickets, now);
-    if (digest) digests.push(digest);
+    var kind = agent.role === "lead" ? "lead" : "agent";
+    var digest = buildDigest(kind, agent, tickets, now);
+    if (digest) (kind === "lead" ? leads : others).push(digest);
   });
-  return digests;
+  return leads.concat(others);
 }
 
 function digestText(d, lang) {

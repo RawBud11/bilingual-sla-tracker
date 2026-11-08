@@ -63,14 +63,18 @@ function cell(row, map, key) {
 }
 
 // Agents tab -> [{ name, email, language, role }]. Rows without a valid email
-// are skipped: a digest needs somewhere to go.
+// are skipped: a digest needs somewhere to go. A repeated email keeps only its
+// first row, so nobody gets the same digest twice.
 function readAgents(table, lang) {
   if (!table.length) return [];
   var map = mapColumns(table[0], AGENT_COLUMNS, EXTRA_AGENT_ALIASES, ["name", "email"], lang);
   var agents = [];
+  var seen = {};
   table.slice(1).forEach(function (row) {
     var email = cell(row, map, "email");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    if (seen[email.toLowerCase()]) return;
+    seen[email.toLowerCase()] = true;
     agents.push({
       name: cell(row, map, "name"),
       email: email,
@@ -108,6 +112,17 @@ function effectivePriority(category, priorityCell) {
   return { priority: priority, raisedFrom: "" };
 }
 
+// Category guessed from the subject when the Category cell is empty or not
+// recognized (see CATEGORY_KEYWORDS in config.js), or "".
+function guessCategory(subject) {
+  var folded = foldText(subject);
+  for (var i = 0; i < CATEGORY_KEYWORDS.length; i++) {
+    var all = CATEGORY_KEYWORDS[i][1].every(function (re) { return re.test(folded); });
+    if (all) return CATEGORY_KEYWORDS[i][0];
+  }
+  return "";
+}
+
 // "Waiting on customer" with no update for more than 2 business days.
 function isStaleFollowUp(status, lastUpdateAt, now) {
   if (status !== "waiting") return false;
@@ -119,13 +134,15 @@ function isStaleFollowUp(status, lastUpdateAt, now) {
 
 // Check one data row. `now` is "YYYY-MM-DD HH:mm" in the team time zone.
 function checkTicket(row, map, agents, now) {
-  var category = idFromLabel("category", cell(row, map, "category"), CATEGORIES);
+  var subject = cell(row, map, "subject");
+  var typedCategory = idFromLabel("category", cell(row, map, "category"), CATEGORIES);
+  // No usable category: guess one from the subject so a stolen card is still Urgent.
+  var category = typedCategory || guessCategory(subject);
   var status = idFromLabel("status", cell(row, map, "status"), TICKET_STATUSES) || "open";
   var p = effectivePriority(category, cell(row, map, "priority"));
   var createdAt = cell(row, map, "created_at");
   var firstResponseAt = cell(row, map, "first_response_at");
   var lastUpdateAt = cell(row, map, "last_update_at");
-  var subject = cell(row, map, "subject");
   var typedLanguage = idFromLabel("language", cell(row, map, "language"), LANGUAGES);
   var masked = maskSensitive(subject);
 
@@ -153,6 +170,7 @@ function checkTicket(row, map, agents, now) {
     subject: masked.text, // only the masked subject is kept
     maskedCount: masked.count,
     category: category,
+    categoryGuessed: !typedCategory && !!category,
     categoryText: cell(row, map, "category"),
     priority: p.priority,
     raisedFrom: p.raisedFrom,
@@ -189,7 +207,7 @@ function checkTickets(table, agents, now, lang) {
 }
 
 // Order for people: unassigned urgent, breached, at risk, stale, the rest;
-// then by due time.
+// then by due time (no due time, from unreadable dates, goes last).
 function attentionRank(ticket) {
   if (ticket.unassignedUrgent) return 0;
   if (ticket.sla === "breached") return 1;
@@ -199,8 +217,9 @@ function attentionRank(ticket) {
 }
 
 function sortForAttention(tickets) {
+  function due(tk) { return tk.slaDue || "9999"; }
   return tickets.slice().sort(function (a, b) {
-    return attentionRank(a) - attentionRank(b) || (a.slaDue < b.slaDue ? -1 : a.slaDue > b.slaDue ? 1 : 0);
+    return attentionRank(a) - attentionRank(b) || (due(a) < due(b) ? -1 : due(a) > due(b) ? 1 : 0);
   });
 }
 

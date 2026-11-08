@@ -32,7 +32,7 @@ The team keeps working in the same Google Sheet. The tracker adds a few columns 
 
 - Google Apps Script, in plain JavaScript: a menu, a setup function, a daily trigger and email through Gmail's MailApp.
 - All the rules (business-hours math, priority floors, digests, masking, summary) in small JavaScript files with no Google dependencies, so they can be tested on any computer.
-- 149 automated tests with vitest, run locally with Node.js, including masking and safety checks in English and Spanish.
+- 177 automated tests with vitest, run locally with Node.js, including masking and safety checks in English and Spanish, and the Google Sheets layer run against a fake Sheet and Gmail.
 - A local demo that runs the same rules on CSV files, with no Google account.
 - One file, `dist/Code.gs`, to paste into the Sheet's Apps Script editor.
 - No AI. Every rule is plain code a person can read and change.
